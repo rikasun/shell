@@ -1,0 +1,59 @@
+{{- if .Values.sshd.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    {{- include "shell.sshd.labels" . | nindent 4 }}
+  name: {{ include "shell.fullname" . }}-sshd
+spec:
+  selector:
+    matchLabels:
+      {{- include "shell.sshd.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/sshd.sh: {{ .Files.Get "sshd.sh" | sha256sum | quote }}
+        checksum/configmap.yaml: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "shell.sshd.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "shell.sshd.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - args:
+          - /scripts/sshd.sh
+          command:
+          - /bin/bash
+          env:
+          - name: CASED_SHELL_ENDPOINT
+            value: {{ .Values.service.protocol }}://{{ include "shell.fullname" . }}-{{ .Values.service.protocol }}:{{ .Values.service.port }}
+          - name: PING_PATH
+            value: '/v2/_ping'
+          image: {{ .Values.sshd.image }}
+          imagePullPolicy: Always
+          name: sshd
+          ports:
+          - containerPort: 22
+            name: sshd
+          readinessProbe:
+            initialDelaySeconds: 5
+            periodSeconds: 15
+            tcpSocket:
+              port: 22
+          resources:
+            {{- toYaml .Values.sshd.resources | nindent 12 }}
+          volumeMounts:
+          - mountPath: /scripts
+            name: scripts
+      enableServiceLinks: false
+      volumes:
+      - configMap:
+          name: {{ include "shell.fullname" . }}-scripts
+        name: scripts
+{{ end }}

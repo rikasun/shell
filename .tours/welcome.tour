@@ -1,0 +1,11 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "welcome",
+  "isPrimary": true,
+  "steps": [
+    {
+      "title": "Introduction",
+      "description": "Welcome! For more information on how to develop Cased Shell with VS Code, run our usage information task:\n\n[Show devcontainer usage information](command:workbench.action.tasks.runTask?[\"Show devcontainer usage information\"])"
+    }
+  ]
+}

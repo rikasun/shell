@@ -1,0 +1,12 @@
+version: '3.2'
+services:
+  sut:
+    image: casedhub-shell-test
+    restart: 'no'
+    env_file: ../../../.env.test
+    environment:
+      CASED_SHELL_TLS: 'off'
+      NO_DATABASE: 'true'
+      SUITE: 'tls-off'
+    command: |
+      /bin/bash -c '/code/start > /tmp/log 2>&1 & /code/test'

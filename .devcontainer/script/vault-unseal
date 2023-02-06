@@ -1,0 +1,30 @@
+#!/bin/bash
+set -e
+
+# Load all vault environment
+set -o allexport
+for f in $(ls .env.development.vault*); do . $f; done
+set +o allexport
+
+until vault status | grep Sealed | grep -q false; do
+  if [ "$SECONDS" -gt "6" ]; then
+    sleep 1
+  fi
+  if [ "$SECONDS" -gt "60" ]; then
+    echo "Vault failed to unseal."
+    vault status
+    exit 1
+  fi
+  echo "Unsealing vault..."
+  if [ -z "$VAULT_UNSEAL_TOKEN" ]; then
+    echo "VAULT_UNSEAL_TOKEN not set."
+    exit 1
+  fi
+  vault operator unseal "$VAULT_UNSEAL_TOKEN"
+  if ! vault secrets list | grep secret/ | grep -q kv; then
+    vault secrets enable -version=2 -path=secret/ kv
+  fi
+done
+if vault status | grep Sealed | grep -q false; then
+  echo "Vault unsealed."
+fi

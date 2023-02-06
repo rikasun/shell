@@ -1,0 +1,147 @@
+#!/bin/bash
+# Usage: bash ./.devcontainer/script/charts-install .devcontainer/helm/shell-dev.yaml ./charts/cased-shell/
+set -e -o pipefail
+
+./.devcontainer/script/k3s-init
+
+# Extract environment matching value basename, e.g. SHELL_DEV_*
+name=$(basename $1 .yaml)
+env_prefix=$(echo $name | tr '[:lower:]' '[:upper:]' | tr '-' '_')
+
+echo "extracting environment variables matching ${env_prefix}_"
+if env | grep -q "${env_prefix}_"; then
+  env | grep "${env_prefix}_" | sed "s/${env_prefix}_//g" > .env.helm.${name}
+else
+  echo "none found"
+  echo "" > .env.helm.${name}
+fi
+
+: ${NAMESPACE:=default}
+
+# Don't use defaults
+export OLD_AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+export OLD_AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+export AWS_ACCESS_KEY_ID=
+export AWS_SECRET_ACCESS_KEY=
+
+set -o allexport
+source .env.helm.${name}
+set +o allexport
+
+# Massage a few supported environment values into helm set arguments
+echo "--set=podAnnotations.installed-by=chart-install" > .env.helm-args.${name}
+
+# Configure ingress for Codespaces
+fqdn="$(docker run -i --rm mikefarah/yq '.ingress.fqdn' < ${1})"
+if [ "$fqdn" != "null" ]; then
+  echo "fqdn detected in values.yaml"
+else
+  if [ -n "$CODESPACE_NAME" ]; then
+    echo "Configuring ingress for ${CODESPACE_NAME}-8443.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
+    echo "--set=ingress.fqdn=${CODESPACE_NAME}-8443.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}" >> .env.helm-args.${name}
+  else
+    echo "Configuring ingress for localhost"
+    echo "--set=ingress.fqdn=localhost" >> .env.helm-args.${name}
+  fi
+fi
+
+# Inject Codespaces AWS creds if necessary
+objectStorageBackend="$(docker run -i --rm mikefarah/yq '.config.objectStorageBackend' < ${1})"
+if [ "${objectStorageBackend}" = "s3" ]; then
+  if [ -n "$AWS_ACCESS_KEY_ID" ]; then
+    echo "Configuring AWS_ACCESS_KEY_ID"
+    echo "--set=aws.key.access=${AWS_ACCESS_KEY_ID}" >> .env.helm-args.${name}
+  fi
+  if [ -n "$AWS_SECRET_ACCESS_KEY" ]; then
+    echo "Configuring AWS_SECRET_ACCESS_KEY"
+    echo "--set=aws.key.secret=${AWS_SECRET_ACCESS_KEY}" >> .env.helm-args.${name}
+  fi
+fi
+
+# Injects SSO creds if necessary
+if [ -n "$OKTA_SAML_SSO_URL" ]; then
+  echo "Configuring OKTA_SAML_SSO_URL"
+  echo "--set=config.sso.OKTA_SAML_SSO_URL=${OKTA_SAML_SSO_URL}" >> .env.helm-args.${name}
+fi
+if [ -n "$OKTA_SAML_ISSUER" ]; then
+  echo "Configuring OKTA_SAML_ISSUER"
+  echo "--set=config.sso.OKTA_SAML_ISSUER=${OKTA_SAML_ISSUER}" >> .env.helm-args.${name}
+fi
+if [ -n "$OKTA_SAML_CA_CERT" ]; then
+  echo "Configuring OKTA_SAML_CA_CERT"
+  echo "--set=config.sso.OKTA_SAML_CA_CERT=${OKTA_SAML_CA_CERT}" >> .env.helm-args.${name}
+fi
+
+if [ -n "$OKTA_OIDC_ISSUER" ]; then
+  echo "Configuring OKTA_OIDC_ISSUER"
+  echo "--set=config.sso.OKTA_OIDC_ISSUER=${OKTA_OIDC_ISSUER}" >> .env.helm-args.${name}
+fi
+if [ -n "$OKTA_OIDC_CLIENT_ID" ]; then
+  echo "Configuring OKTA_OIDC_CLIENT_ID"
+  echo "--set=config.sso.OKTA_OIDC_CLIENT_ID=${OKTA_OIDC_CLIENT_ID}" >> .env.helm-args.${name}
+fi
+if [ -n "$OKTA_OIDC_CLIENT_SECRET" ]; then
+  echo "Configuring OKTA_OIDC_CLIENT_SECRET"
+  echo "--set=config.sso.OKTA_OIDC_CLIENT_SECRET=${OKTA_OIDC_CLIENT_SECRET}" >> .env.helm-args.${name}
+fi
+
+if [ -n "$OAUTH_GITHUB_CLIENT_ID" ]; then
+  echo "Configuring OAUTH_GITHUB_CLIENT_ID"
+  echo "--set=config.sso.github_client_id=${OAUTH_GITHUB_CLIENT_ID}" >> .env.helm-args.${name}
+fi
+if [ -n "$OAUTH_GITHUB_CLIENT_SECRET" ]; then
+  echo "Configuring OAUTH_GITHUB_CLIENT_SECRET"
+  echo "--set=config.sso.github_client_secret=${OAUTH_GITHUB_CLIENT_SECRET}" >> .env.helm-args.${name}
+fi
+if [ -n "$OAUTH_GITHUB_ORG" ]; then
+  echo "Configuring OAUTH_GITHUB_ORG"
+  echo "--set=config.sso.github_orgs[0].name=${OAUTH_GITHUB_ORG}" >> .env.helm-args.${name}
+fi
+
+if [ -n "$GOOGLE_OAUTH_CLIENT_ID" ]; then
+  echo "Configuring GOOGLE_OAUTH_CLIENT_ID"
+  echo "--set=config.sso.google_client_id=${GOOGLE_OAUTH_CLIENT_ID}" >> .env.helm-args.${name}
+fi
+if [ -n "$GOOGLE_OAUTH_CLIENT_SECRET" ]; then
+  echo "Configuring GOOGLE_OAUTH_CLIENT_SECRET"
+  echo "--set=config.sso.google_client_secret=${GOOGLE_OAUTH_CLIENT_SECRET}" >> .env.helm-args.${name}
+fi
+
+# Use latest image from the PR if available. Requires changes to Docker image
+# and PR to be pushed separately. Improvements to this workflow are welcome.
+if gh pr view > /dev/null && gh pr view | grep ^labels: | grep -q docker:pr-image; then
+  pr_number=$(gh pr view | grep ^number: | awk '{print $2}')
+  pr_url=$(gh pr view | grep ^url: | awk '{print $2}')
+  if [ -n "$pr_number" ]; then
+    echo "Using image from ${pr_url} since it has label 'docker:pr-image'"
+    echo "--set=config.image=ghcr.io/cased/shell:pr-${pr_number}" >> .env.helm-args.${name}
+    echo "--set=sshd.image=ghcr.io/cased/sshd-demo:pr-${pr_number}" >> .env.helm-args.${name}
+  fi
+fi
+
+# Reconfigure defaults
+export AWS_ACCESS_KEY_ID=$OLD_AWS_ACCESS_KEY_ID
+export AWS_SECRET_ACCESS_KEY=$OLD_AWS_SECRET_ACCESS_KEY
+export OLD_AWS_ACCESS_KEY_ID=
+export OLD_AWS_SECRET_ACCESS_KEY=
+
+kubectl get ns ${NAMESPACE} | grep -q ${NAMESPACE} || kubectl create ns ${NAMESPACE}
+
+helm template \
+  --namespace ${NAMESPACE} \
+  -f ${1} \
+  $(cat .env.helm-args.${name} | tr '\n' ' ') \
+  ${name} \
+  ${2} > tmp/${name}.yaml
+
+echo "Template written to tmp/${name}.yaml"
+
+echo "Running helm upgrade --install --reuse-values -n ${NAMESPACE} -f ${1} ${name} ${2} with args from .env.helm-args.${name}."
+exec helm upgrade \
+  --namespace ${NAMESPACE} \
+  --install \
+  --reuse-values \
+  -f ${1} \
+  $(cat .env.helm-args.${name} | tr '\n' ' ') \
+  ${name} \
+  ${2}

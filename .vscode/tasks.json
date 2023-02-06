@@ -1,0 +1,98 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Show devcontainer usage information",
+      "type": "process",
+      "command": "./.devcontainer/postAttachCommand.sh",
+      "detail": "./.devcontainer/postAttachCommand.sh",
+      "problemMatcher": [],
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Run server",
+      "type": "process",
+      "command": "./local-run",
+      "detail": "./local-run",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Authenticate cased-cli",
+      "type": "process",
+      "command": "./.devcontainer/script/cased-cli-auth",
+      "detail": "./.devcontainer/script/cased-cli-auth",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Run tests",
+      "type": "process",
+      "command": "pytest",
+      "detail": "pytest",
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Run integration tests",
+      "type": "process",
+      "command": "./test",
+      "detail": "./test",
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Run charts build",
+      "type": "npm",
+      "script": "charts:build",
+      "options": {
+        "shell": {
+          "args": ["-c", "-l"]
+        }
+      },
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Run charts server",
+      "type": "npm",
+      "script": "charts:server",
+      "options": {
+        "shell": {
+          "args": ["-c", "-l"]
+        }
+      },
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    }
+  ]
+}

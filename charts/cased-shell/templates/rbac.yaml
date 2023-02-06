@@ -1,0 +1,38 @@
+{{- if .Values.config.serviceAccount.create -}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "shell.serviceAccountName" . }}
+  labels:
+    {{- include "shell.labels" . | nindent 4 }}
+  {{- with .Values.config.serviceAccount.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+---
+{{ end }}
+{{- if .Values.rbac.create -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "shell.fullname" . }}
+  labels:
+    {{- include "shell.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "shell.fullname" . }}
+subjects:
+- kind: ServiceAccount
+  name: {{ include "shell.serviceAccountName" . }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "shell.fullname" . }}
+  labels:
+    {{- include "shell.labels" . | nindent 4 }}
+rules:
+  {{- toYaml .Values.config.role.rules | nindent 2 }}
+---
+{{- end }}

@@ -1,0 +1,26 @@
+@import '../../../../../node_modules/prismjs/themes/prism.css';
+@import '../../../../../node_modules/prismjs/plugins/line-numbers/prism-line-numbers.css';
+
+.ide {
+  @apply relative;
+
+  $width: 40px;
+
+  padding-left: $width;
+  overflow: visible !important;
+  margin-left: $width;
+
+  &__line-number {
+    @apply absolute;
+    @apply bg-gray-300;
+    @apply px-1.5;
+
+    left: -$width;
+    width: $width;
+    padding: 0 5px;
+  }
+
+  textarea {
+    @apply outline-0;
+  }
+}

@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "shell.fullname" . }}-configure-hosts-with-jump
+  labels:
+    {{- include "shell.labels" . | nindent 4 }}
+data:
+    CASED_SHELL_HOST_FILE: /config/jump.json

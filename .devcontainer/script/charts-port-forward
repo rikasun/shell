@@ -1,0 +1,33 @@
+#!/bin/bash
+set -e -o pipefail
+
+PORT=8443
+
+kubectl rollout status deployment shell-dev-cased-shell-v3 --timeout=200s
+kubectl -n ingress-nginx --warnings-as-errors=true port-forward svc/ingress-nginx-controller ${PORT}:443 &
+port_forward_pid=$!
+
+until ps $port_forward_pid > /dev/null; do
+  sleep 1
+  printf .
+done
+
+echo "https://localhost:${PORT} now available, setting up port forwarding..."
+
+# Make it public
+if [ -n "$CODESPACE_NAME" ]; then
+  until gh codespace ports visibility ${PORT}:public -c ${CODESPACE_NAME}; do
+    sleep 1
+    echo "retrying..."
+  done
+  gh codespace ports -c ${CODESPACE_NAME} | grep -q ${PORT}
+  echo "port ${PORT} set to public"
+fi
+
+# Output a clicky URL
+echo
+echo "https://${CODESPACE_NAME}-${PORT}.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}/"
+echo
+
+# Tail logs
+exec kubectl logs --tail=0 -f deploy/shell-dev-cased-shell-v3

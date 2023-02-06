@@ -1,0 +1,31 @@
+services:
+  gcs:
+    image: fsouza/fake-gcs-server:1.37.10
+    command:
+      - -port
+      - '8080'
+      - -scheme
+      - http
+      - -external-url
+      - http://gcs:8080
+    expose:
+      - 8080
+    healthcheck:
+      test: [ "CMD", "mkdir", "-p", "/storage/test" ]
+      interval: 1s
+      timeout: 1s
+      retries: 15
+      start_period: 1s
+  sut:
+    depends_on:
+      gcs:
+        condition: service_healthy
+    image: casedhub-shell-test
+    restart: "no"
+    env_file: ../../../.env.test
+    environment:
+      STORAGE_BACKEND: gcs
+      NO_DATABASE: 'true'
+      STORAGE_GOOGLE_CLOUD_BUCKET: test
+      STORAGE_EMULATOR_HOST: http://gcs:8080
+    command: pytest -v tests/test_cloudyblobject.py tests/test_shell_session.py tests/models/test_session_replay.py

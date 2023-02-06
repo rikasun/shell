@@ -1,0 +1,20 @@
+{{- if .Values.sshd.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  annotations: {}
+  labels:
+    {{- include "shell.server.labels" . | nindent 4 }}
+  name: {{ include "shell.fullname" . }}-cased-server-ssh
+spec:
+  ports:
+  - name: ssh
+    port: 22
+    targetPort: ssh
+    {{- with .Values.server.service.nodePort }}
+    nodePort: {{ . }}
+    {{- end }}
+  selector:
+    {{- include "shell.server.selectorLabels" . | nindent 4 }}
+  type: {{ .Values.server.service.type }}
+{{ end }}

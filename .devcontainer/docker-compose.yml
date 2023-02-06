@@ -1,0 +1,227 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: ..
+      cache_from:
+        - ghcr.io/cased/shell-devcontainer:main
+        - ghcr.io/cased/shell-devcontainer-cache:main
+        - type=gha,scope=shell-devcontainer-main
+      dockerfile: .devcontainer/Dockerfile
+      args:
+        NODE_VERSION: 'lts/*'
+    volumes:
+      - ..:/workspaces/shell:cached
+    volumes_from:
+      - x11-bridge:rw
+    environment:
+      DISPLAY: ":14"
+      LIBGL_ALWAYS_INDIRECT: 0
+    depends_on:
+      - minio-buckets
+      - x11-bridge
+    init: true
+    cap_add:
+      - IPC_LOCK
+    # Overrides default command so things don't shut down after the process ends.
+    command: sleep infinity
+
+    network_mode: service:devcontainer
+
+  devcontainer:
+    # A 'pause' container that exists only for its network namespace,
+    # which is use by the app container and all other containers that
+    # need to present resources to the app's `localhost`.
+    image: busybox
+    command:
+      - tail
+      - -F
+      - /tmp/does-not-exist
+
+  shell-postgres:
+    image: postgres:11.6
+    command: -p 5534
+    restart: always
+    network_mode: service:devcontainer
+    volumes:
+      - postgres-data-shell:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: cased
+      POSTGRES_PASSWORD: shell
+      POSTGRES_DB: cased-shell
+
+  shell-test-postgres:
+    image: postgres:11.6
+    command: -p 5536
+    restart: always
+    network_mode: service:devcontainer
+    volumes:
+      - postgres-data-shell-test:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: cased
+      POSTGRES_PASSWORD: shell
+      POSTGRES_DB: cased-shell-test
+
+  x11-bridge:
+    image: jare/x11-bridge
+
+    volumes:
+      - "/tmp/.X11-unix:/tmp/.X11-unix:rw"
+
+    restart: always
+    network_mode: service:devcontainer
+    environment:
+      MODE: tcp
+      XPRA_HTML: "yes"
+      DISPLAY: :14
+      XPRA_TCP_PORT: "8080"
+      XPRA_PASSWORD: cypress
+
+  # SSH examples
+
+  sshd2:
+    image: ghcr.io/cased/sshd-demo:main
+    restart: always
+    environment:
+      LC_ALL: C.UTF-8
+
+  sshd3:
+    image: ghcr.io/cased/sshd-demo:main
+    restart: always
+    # port 22 will only be available 'internally', and can be accessed using sshd2 above as a bastion host
+    environment:
+      LC_ALL: C.UTF-8
+
+  oauth:
+    image: ghcr.io/cased/ssh-oauth-handlers:pr-10
+    command:
+      - generic
+      - http://devcontainer:8888/v2
+      - /bin/bash
+    restart: always
+    environment:
+      KBD: "true"
+
+  # Public supporting services
+  minio-buckets:
+    image: busybox
+    entrypoint: /bin/sh
+    command:
+      - -ec
+      - |
+        mkdir -p /data/cased-audit-trail-exports;
+        mkdir -p /data/cased-ca;
+        mkdir -p /data/development-global-cased-audit-events;
+        touch /tmp/ready;
+        exec tail -F /tmp/does-not-exist;
+    healthcheck:
+      test: [ "CMD", "test", "-f", "/tmp/ready" ]
+      interval: 5s
+      timeout: 10s
+      retries: 4
+    volumes:
+      - minio-data:/data
+
+  minio:
+    image: minio/minio:latest
+    hostname: minio
+    depends_on:
+      - minio-buckets
+    volumes:
+      - minio-data:/data
+    command: server /data
+    environment:
+      MINIO_ACCESS_KEY: cased
+      MINIO_SECRET_KEY: audit-trails
+
+  gcs:
+    image: fsouza/fake-gcs-server:1.37.10
+    command:
+      - -port
+      - '8080'
+      - -scheme
+      - http
+      - -external-url
+      - http://gcs:8080
+    volumes:
+      - gcs-data:/data
+    healthcheck:
+      test: [ "CMD", "mkdir", "-p", "/storage/test" ]
+      interval: 1s
+      timeout: 1s
+      retries: 15
+      start_period: 1s
+
+  vault:
+    image: vault:1.9.8
+    restart: unless-stopped
+    command: server
+    environment:
+      VAULT_LOCAL_CONFIG: >
+        {
+          "backend": { "file": { "path": "/vault/file" } },
+          "default_lease_ttl": "168h",
+          "max_lease_ttl": "720h",
+          "listener": {
+            "tcp":{
+              "address": "0.0.0.0:8200",
+              "tls_disable": 1
+            }
+          }
+        }
+    cap_add:
+      - IPC_LOCK
+    network_mode: service:devcontainer
+    volumes:
+      - vault:/vault
+
+  cased-server:
+    image: ghcr.io/cased/cased-server:main
+    restart: unless-stopped
+    network_mode: service:devcontainer
+    volumes:
+      - ../tmp/cased-server/tls:/etc/cased-server/tls
+    env_file:
+      # Loads .env.default when running in either VS Code Remote Containers or
+      # when prebuilding a Codespace. DEVCONTAINER_ENV_FILE is overriden and set
+      # to ../.env when running in Codespaces, a file created by
+      # initializeCommand.sh that contains Codespace-specific environment
+      # variables.
+      - ${DEVCONTAINER_ENV_FILE:-.env.default}
+    environment:
+      TLS_SKIP_VERIFY: 'true'
+      TLS_CERT_FILE: /etc/cased-server/tls/cert.pem
+      TLS_KEY_FILE: /etc/cased-server/tls/key.pem
+
+  dex:
+    image: ghcr.io/dexidp/dex:v2.35.3
+    restart: unless-stopped
+    network_mode: service:devcontainer
+    command:
+      - /usr/local/bin/docker-entrypoint
+      - dex
+      - serve
+      - /etc/dex/cfg/dex.yaml
+    env_file:
+      # Loads .env.default when running in either VS Code Remote Containers or
+      # when prebuilding a Codespace. DEVCONTAINER_ENV_FILE is overriden and set
+      # to ../.env when running in Codespaces, a file created by
+      # initializeCommand.sh that contains Codespace-specific environment
+      # variables.
+      - ${DEVCONTAINER_ENV_FILE:-.env.default}
+    volumes:
+      - ../tmp/dex/tls:/etc/dex/tls
+      - ../charts/cased-shell/files:/etc/dex/cfg
+    environment:
+      DEX_WEB_HTTPS: 0.0.0.0:5554
+      DEX_WEB_TLS_CERT: /etc/dex/tls/cert.pem
+      DEX_WEB_TLS_KEY: /etc/dex/tls/key.pem
+      ENABLE_STATIC_PASSWORDS: 'true'
+
+volumes:
+  postgres-data-shell: null
+  postgres-data-shell-test: null
+  minio-data: null
+  gcs-data: null
+  vault: null

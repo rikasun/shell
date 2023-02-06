@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "shell.fullname" . }}-jump
+  labels:
+    {{- include "shell.labels" . | nindent 4 }}
+data:
+  jump-defaults.yaml: |
+    {{- if .Values.sshd.enabled }}
+    queries:
+      - provider: static
+        prompt:
+          featured: true
+          hostname: {{ include "shell.fullname" . }}-sshd
+          username: app
+          labels:
+            app: cased-shell
+    {{- else }}
+    queries: []
+    {{- end }}
+  jump-custom.yaml: |
+    {{ .Values.config.jump | nindent 4 }}

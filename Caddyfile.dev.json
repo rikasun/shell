@@ -1,0 +1,148 @@
+{
+  "admin": {
+    "disabled": true
+  },
+  "apps": {
+    "tls": {
+      "certificates": {
+        "load_files": [
+          {
+            "certificate": "./tmp/cased-shell/tls/cert.pem",
+            "key": "./tmp/cased-shell/tls/key.pem",
+            "tags": ["cert0"]
+          }
+        ]
+      }
+    },
+    "pki": {
+      "certificate_authorities": {
+        "local": {
+          "install_trust": false
+        }
+      }
+    },
+    "http": {
+      "http_port": 8889,
+      "https_port": 8890,
+      "servers": {
+        "srv0": {
+          "tls_connection_policies": [
+            {
+              "certificate_selection": {
+                "any_tag": ["cert0"]
+              }
+            }
+          ],
+          "listen": [":8889", "localhost:8890"],
+          "routes": [
+            {
+              "match": [{ "path": ["/v2*"] }],
+              "handle": [
+                {
+                  "handler": "subroute",
+                  "routes": [
+                    {
+                      "handle": [
+                        {
+                          "handler": "reverse_proxy",
+                          "upstreams": [{ "dial": "localhost:8888" }]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "match": [{ "path": ["/idp*"] }],
+              "handle": [
+                {
+                  "handler": "subroute",
+                  "routes": [
+                    {
+                      "handle": [
+                        {
+                          "handler": "reverse_proxy",
+                          "transport": {
+                            "protocol": "http",
+                            "tls": {
+                              "insecure_skip_verify": true
+                            }
+                          },
+                          "upstreams": [{ "dial": "localhost:5554" }]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "match": [{ "path": ["/cased-server*"] }],
+              "handle": [
+                {
+                  "handler": "subroute",
+                  "routes": [
+                    {
+                      "handle": [
+                        {
+                          "handler": "reverse_proxy",
+                          "transport": {
+                            "protocol": "http",
+                            "tls": {
+                              "insecure_skip_verify": true
+                            }
+                          },
+                          "upstreams": [{ "dial": "localhost:6566" }],
+                          "rewrite": {
+                            "strip_path_prefix": "/cased-server"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "match": [{ "path": ["/_health"] }],
+              "handle": [
+                {
+                  "handler": "subroute",
+                  "routes": [
+                    {
+                      "handle": [
+                        {
+                          "body": "ok",
+                          "handler": "static_response",
+                          "status_code": 200
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "handle": [
+                {
+                  "handler": "subroute",
+                  "routes": [
+                    {
+                      "handle": [
+                        {
+                          "handler": "reverse_proxy",
+                          "upstreams": [{ "dial": "localhost:4200" }]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

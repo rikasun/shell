@@ -1,0 +1,5 @@
+# https://github.com/aquasecurity/trivy/blob/main/pkg/result/testdata/.trivyignore
+
+# sshd starts as root
+# https://avd.aquasec.com/misconfig/dockerfile/ds002/
+DS002

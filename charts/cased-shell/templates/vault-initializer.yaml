@@ -1,0 +1,116 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    {{- include "shell.vaultInit.labels" . | nindent 4 }}
+  name: {{ include "shell.fullname" . }}-vault-init
+spec:
+  selector:
+    matchLabels:
+      {{- include "shell.vaultInit.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "shell.vaultInit.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "shell.fullname" . }}-vault-unsealer
+      enableServiceLinks: false
+      containers:
+        - name: init
+          image: vault:1.12.0@sha256:c8a40d3d0255cca3a64819417a4e6deb11ee2ffff08494d7fddf644a19e703c3
+          command:
+            - /bin/sh
+          args:
+            - -ce
+            - |
+              trap "exit 0" TERM
+
+              while true; do
+                sleep 15
+
+                if ! vault status | grep -q Initialized; then
+                  echo "Waiting for vault to start..."
+                  until vault status | grep -q Initialized; do
+                    printf "."
+                  done
+                  echo ""
+                fi
+
+                if ! vault status | grep Initialized | grep -q true; then
+                  echo "initializing vault"
+                  vault operator init -key-shares=1 -key-threshold=1 > /scratch/vault-init.txt
+                  unseal_token=$(grep 'Unseal Key 1:' /scratch/vault-init.txt | awk '{print $NF}')
+                  printf "$unseal_token" > /scratch/unseal_token
+                  root_token=$(grep 'Initial Root Token:' /scratch/vault-init.txt | awk '{print $NF}')
+                  printf "$root_token" > /scratch/root_token
+                fi
+
+                date
+                vault status || true
+                sleep 15
+              done
+          volumeMounts:
+            - name: scratch
+              mountPath: "/scratch"
+          env:
+            - name: VAULT_ADDR
+              value: http://{{ .Release.Name }}-vault:8200
+          resources:
+            {{- toYaml .Values.config.vaultInitResources | nindent 12 }}
+        - name: kubectl
+          image: bitnami/kubectl:1.25.3@sha256:2a68d4f80e23459c4d5b16a9bd6ce3987d342567caf44709a070b6299ce9738f
+          command:
+            - /bin/sh
+          args:
+            - -ce
+            - |
+              trap "exit 0" TERM
+
+              cat <<EOF > /scratch/secret-meta.yaml
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                labels:
+                  {{- include "shell.vaultInit.labels" . | nindent 18 }}
+                annotations:
+                  meta.helm.sh/release-name: {{ .Release.Name }}
+                  meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+                name: {{ include "shell.fullname" . }}-vault
+              EOF
+
+              while true; do
+                if [ -f /scratch/root_token ]; then
+                  # Cleanup any old stale values
+                  kubectl delete secret {{ include "shell.fullname" . }}-vault || true
+                  # Create secret w/ Helm labels
+                  kubectl create secret generic {{ include "shell.fullname" . }}-vault \
+                  --from-file=VAULT_TOKEN=/scratch/root_token \
+                  --from-file=VAULT_UNSEAL_TOKEN=/scratch/unseal_token \
+                  --from-literal=VAULT_ADDR=http://{{ .Release.Name }}-vault:8200 \
+                  --dry-run=client -o yaml | \
+                  kubectl patch -f- \
+                    --patch-file=/scratch/secret-meta.yaml \
+                    --dry-run=client --local -o yaml | \
+                  kubectl create \
+                    --validate=false -f-
+
+                  rm /scratch/*
+                fi
+                sleep 3
+              done
+          volumeMounts:
+            - name: scratch
+              mountPath: "/scratch"
+          resources:
+            {{- toYaml .Values.config.vaultInitResources | nindent 12 }}
+      volumes:
+      - name: scratch
+        emptyDir: {}

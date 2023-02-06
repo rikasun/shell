@@ -1,0 +1,40 @@
+{{- if .Values.sshd.enabled -}}
+{{- if .Values.sshd.serviceAccount.create -}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "shell.sshd.serviceAccountName" . }}
+  labels:
+    {{- include "shell.sshd.labels" . | nindent 4 }}
+  {{- with .Values.sshd.serviceAccount.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+---
+{{ end }}
+{{- if .Values.rbac.create -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "shell.fullname" . }}-sshd
+  labels:
+    {{- include "shell.sshd.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "shell.fullname" . }}-sshd
+subjects:
+- kind: ServiceAccount
+  name: {{ include "shell.sshd.serviceAccountName" . }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "shell.fullname" . }}-sshd
+  labels:
+    {{- include "shell.sshd.labels" . | nindent 4 }}
+rules:
+  {{- toYaml .Values.sshd.role.rules | nindent 2 }}
+---
+{{- end }}
+{{- end }}

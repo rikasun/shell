@@ -1,0 +1,12 @@
+version: '3.2'
+services:
+  sut:
+    image: casedhub-shell-test
+    restart: 'no'
+    env_file: ../../../.env.test
+    environment:
+      CASED_SHELL_HOSTNAME: 'shell.example.com'
+      NO_DATABASE: 'true'
+      SUITE: 'acme'
+    command: |
+      /bin/bash -c '/code/start > /tmp/log 2>&1 & /code/test'

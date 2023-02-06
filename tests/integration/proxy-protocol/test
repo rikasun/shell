@@ -1,0 +1,4 @@
+#!/bin/bash
+set -ex -o pipefail
+
+curl -v --haproxy-protocol --fail --max-time 1 -k https://localhost:8443/

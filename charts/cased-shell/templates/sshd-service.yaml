@@ -1,0 +1,23 @@
+{{- if .Values.sshd.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    {{- include "shell.sshd.labels" . | nindent 4 }}
+  name: {{ include "shell.fullname" . }}-sshd
+  annotations:
+  {{- with .Values.server.service.annotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.server.service.loadBalancerClass }}
+  loadBalancerClass: {{ . }}
+  {{- end }}
+  ports:
+  - name: sshd
+    port: 22
+    targetPort: sshd
+  selector:
+    {{- include "shell.sshd.selectorLabels" . | nindent 4 }}
+  type: ClusterIP
+{{ end }}

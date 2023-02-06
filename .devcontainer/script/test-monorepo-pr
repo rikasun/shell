@@ -1,0 +1,23 @@
+#!/bin/bash
+
+pr=$1
+if [ -z "$pr" ]; then
+  echo "Usage: $0 <PR number>"
+  exit 1
+fi
+link="http://github.com/cased/shell/pull/${pr}"
+echo "Updating devcontainer config to point to ${link} ..."
+echo ""
+echo "* Add the docker:pr-image label to ${link} if it doesn't have it already."
+echo "* Confirm that all docker builds are successful."
+echo ""
+read -n 1 -s -r -p "Press any key to update .devcontainer/docker-compose.yml to use these docker images..."
+sed -r -i -e "s@ghcr.io/cased/(.*):master@ghcr.io/cased/\\1:pr-${pr}@g" .devcontainer/docker-compose.yml
+printf "done."
+echo ""
+git status
+echo ""
+echo "Due to a Codespaces bug, please don't click the 'Rebuild Container' button that appears."
+echo "Testing these changes requires deleting your existing Codespace and creating a new one with the updated image."
+echo "Remember to discard the above changes before merging your PR!"
+echo ""

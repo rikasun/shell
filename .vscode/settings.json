@@ -1,0 +1,27 @@
+{
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "eslint.packageManager": "yarn",
+  "github-actions.workflows.pinned.refresh.enabled": true,
+  "github-actions.workflows.pinned.workflows": [
+    ".github/workflows/docker.yml",
+    ".github/workflows/test.yml"
+  ],
+  "npm.packageManager": "yarn",
+  "prettier.documentSelectors": ["**/*"],
+  "python.envFile": "${workspaceFolder}/.env.test",
+  "python.formatting.provider": "black",
+  "python.linting.enabled": false,
+  "python.testing.pytestArgs": [],
+  "python.testing.pytestEnabled": true,
+  "python.testing.pytestPath": "/home/vscode/.local/bin/pytest",
+  "python.testing.unittestEnabled": true,
+  "prettier.configPath": ".prettierrc",
+  "prettier.singleQuote": true,
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[html]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  }
+}

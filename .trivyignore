@@ -1,0 +1,14 @@
+# https://github.com/aquasecurity/trivy/blob/main/pkg/result/testdata/.trivyignore
+
+# doesn't affect our usage of step
+# https://avd.aquasec.com/nvd/cve-2022-27664
+CVE-2022-27664
+
+# TODO upgrade to latest caddy when available
+# https://avd.aquasec.com/nvd/2022/cve-2022-32149
+CVE-2022-32149
+
+# regex dos
+CVE-2020-28469
+CVE-2021-33623
+CVE-2020-7753

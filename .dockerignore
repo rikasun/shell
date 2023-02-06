@@ -1,0 +1,10 @@
+build
+dist
+node_modules
+shell.egg-info
+.devcontainer/Dockerfile
+Dockerfile
+shell/static/js/bundle.js
+shell/static/css/style.css
+.git
+.github

@@ -1,0 +1,6 @@
+#!/bin/bash
+set -ex
+
+! curl --fail --max-time 1 localhost/_health
+! curl --fail --max-time 1 localhost:8088/_health
+! curl --fail --max-time 1 -k https://localhost:8443/

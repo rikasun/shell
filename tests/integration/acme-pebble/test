@@ -1,0 +1,19 @@
+#!/bin/bash
+set -ex
+
+export PORT=80
+bash tests/integration/test-health-checks.sh
+bash tests/integration/test-http-https-redirect.sh
+
+# Ensure valid on-demand certificate can be obtained in under 10s
+if ! curl --fail --max-time 10 -v --cacert /code/pebble.pem -k --resolve shell.example.com:8443:127.0.0.1 https://shell.example.com:8443 1> /tmp/tls.out 2> /tmp/tls.err; then
+  cat /tmp/tls.err
+  exit 1
+fi
+grep "certificate obtained successfully" /tmp/log  | grep shell.example.com
+grep CN=shell.example.com /tmp/tls.err
+grep CN=Pebble /tmp/tls.err
+grep " 200 " /tmp/tls.err
+! grep -i "server: CasedShell" /tmp/tls.err
+
+bash tests/integration/test-self-signed-tls.sh

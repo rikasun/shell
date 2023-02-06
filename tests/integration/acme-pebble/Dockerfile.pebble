@@ -1,0 +1,2 @@
+FROM letsencrypt/pebble
+ADD pebble.json /pebble.json

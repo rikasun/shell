@@ -1,0 +1,33 @@
+name: Pylint
+
+on:
+  push:
+
+jobs:
+  check:
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ["3.10.x"]
+        command:
+          - >
+            : pylint &&
+            pylint shell --exit-zero
+          - >
+            : format &&
+            black --check .
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Register pylint problem matcher
+        run: |
+          echo "::add-matcher::.github/workflows/matchers/pylint.json"
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: "x64" # optional x64 or x86. Defaults to x64 if not specified
+          cache: "pip" # caching pip dependencies
+      - run: pip install -r requirements.txt
+      - run: ${{ matrix.command }}

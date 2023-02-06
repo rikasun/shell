@@ -1,0 +1,28 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "rootDir": ".",
+    "sourceMap": true,
+    "declaration": false,
+    "moduleResolution": "node",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "target": "es2015",
+    "module": "esnext",
+    "lib": ["es2017", "dom"],
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@cased/data": ["libs/data/src/index.ts"],
+      "@cased/delete-me": ["libs/delete-me/src/index.ts"],
+      "@cased/redux": ["libs/redux/src/index.ts"],
+      "@cased/remotes": ["libs/remotes/src/index.ts"],
+      "@cased/test-utilities": ["libs/test-utilities/src/index.ts"],
+      "@cased/ui": ["libs/ui/src/index.ts"],
+      "@cased/utilities": ["libs/utilities/src/index.ts"]
+    }
+  },
+  "exclude": ["node_modules", "tmp"]
+}

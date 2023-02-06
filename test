@@ -1,0 +1,57 @@
+#!/bin/bash
+set -e
+
+function runTest() {
+    echo "Running integration tests defined in $1"
+    echo "============================================================"
+    if ! docker compose -f "$1" up --build --quiet-pull --always-recreate-deps --force-recreate --abort-on-container-exit --remove-orphans --renew-anon-volumes --exit-code-from sut; then
+        docker compose -f "$1" down
+        echo "$1 failed. To run this test in isolation:" 1>&2
+        echo "" 1>&2
+        echo "    ./test $1" 1>&2
+        exit 1
+    else
+        docker compose -f "$1" down
+        echo "$1 passed"
+        echo ""
+    fi
+}
+
+if [ "${IN_CONTAINER}" != "true" ]; then
+    docker buildx install
+
+    docker buildx build \
+        --build-arg=GIT_SHA=$(git rev-parse --short HEAD) \
+        --cache-from=ghcr.io/cased/shell:main \
+        --cache-from=ghcr.io/cased/shell-cache:main \
+        --pull \
+        -f Dockerfile \
+        --load \
+        -t casedhub-shell-test \
+        .
+
+    if [ -n "$1" ]; then
+        runTest "$1"
+    else
+        for f in tests/integration/*/docker-compose.test.yml; do
+            runTest "$f"
+        done
+    fi
+    echo "All integration tests passed!"
+    exit
+fi
+
+SECONDS=0
+
+echo "Running $SUITE tests..."
+bash tests/integration/test-startup.sh
+bash tests/integration/$SUITE/test
+
+if [ "$SECONDS" -gt "30" ]; then
+    echo "$SUITE suite took ${SECONDS}s to run, longer than our 30s goal" 2>&1
+    exit 1
+else
+    echo "$SUITE suite passed in ${SECONDS}s"
+fi
+
+

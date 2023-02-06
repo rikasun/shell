@@ -1,0 +1,28 @@
+ingress:
+  enabled: true
+  fqdn: helm-alb-example.test-cased-eks.preview-8.com
+  annotations:
+    # https://github.com/kubernetes-sigs/aws-load-balancer-controller
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/backend-protocol: HTTPS
+    alb.ingress.kubernetes.io/target-type: 'ip'
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/healthcheck-path: /v2/_ping
+    alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=600
+
+    # optional, can be used if certificate autodetection doesn't work or doesn't detect the right cert
+    # alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-west-2:588719305803:certificate/9d8538b8-84e6-46c9-a79d-3770e066a610
+
+    # https://github.com/kubernetes-sigs/external-dns
+    external-dns.alpha.kubernetes.io/hostname: helm-alb-example.test-cased-eks.preview-8.com
+
+config:
+  secret: shell_2HrJ0WEulQgGma78oXLrLaNib2l
+  log_level: debug
+  image: ghcr.io/cased/shell:pr-633
+
+sshd:
+  image: ghcr.io/cased/sshd-demo:pr-633
+
+# use the defaults for everything else

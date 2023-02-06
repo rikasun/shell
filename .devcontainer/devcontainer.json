@@ -1,0 +1,127 @@
+{
+  "name": "Cased Shell",
+  "dockerComposeFile": [
+    "docker-compose.yml",
+    "docker-compose.docker-from-docker.yml",
+    "docker-compose.k3s.yml"
+  ],
+  "service": "app",
+  "hostRequirements": {
+    "storage": "64gb"
+  },
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  // Set *default* container specific settings.json values on container create.
+  "settings": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true,
+    "json.format.enable": false,
+    "prettier.documentSelectors": ["**/*"],
+    "sqltools.connections": [
+      {
+        "name": "Container database",
+        "driver": "PostgreSQL",
+        "previewLimit": 50,
+        "server": "localhost",
+        "port": 5534,
+        "database": "cased-shell",
+        "username": "cased",
+        "password": "shell"
+      }
+    ],
+    "python.pythonPath": "/usr/local/bin/python",
+    "python.languageServer": "Pylance",
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": true,
+    "python.formatting.autopep8Path": "/usr/local/py-utils/bin/autopep8",
+    "python.formatting.blackPath": "/usr/local/py-utils/bin/black",
+    "python.formatting.yapfPath": "/usr/local/py-utils/bin/yapf",
+    "python.linting.banditPath": "/usr/local/py-utils/bin/bandit",
+    "python.linting.flake8Path": "/usr/local/py-utils/bin/flake8",
+    "python.linting.mypyPath": "/usr/local/py-utils/bin/mypy",
+    "python.linting.pycodestylePath": "/usr/local/py-utils/bin/pycodestyle",
+    "python.linting.pydocstylePath": "/usr/local/py-utils/bin/pydocstyle",
+    "python.linting.pylintPath": "/usr/local/py-utils/bin/pylint",
+    "python.testing.pytestPath": "/home/vscode/.local/bin/pytest"
+  },
+  // Add the IDs of extensions you want installed when the container is created.
+  "extensions": [
+    "cschleiden.vscode-github-actions",
+    "dbaeumer.vscode-eslint",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "firsttris.vscode-jest-runner",
+    "github.copilot",
+    "GitHub.copilot",
+    "hbenl.vscode-test-explorer",
+    "ms-azuretools.vscode-docker",
+    "ms-kubernetes-tools.vscode-kubernetes-tools",
+    "ms-python.pylint",
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "ms-vscode.test-adapter-converter",
+    "mtxr.sqltools-driver-pg",
+    "mtxr.sqltools",
+    "mutantdino.resourcemonitor",
+    "nrwl.angular-console",
+    "redhat.vscode-yaml",
+    "sleistner.vscode-fileutils",
+    "sysoev.vscode-open-in-github",
+    "vsls-contrib.codetour",
+    "zainchen.json"
+  ],
+  "forwardPorts": [4200, 8080, 8888, 8889],
+  "portsAttributes": {
+    "4200": {
+      "label": "frontend"
+    },
+    "8889": {
+      "label": "shell"
+    },
+    "8888": {
+      "label": "python"
+    },
+    "8080": {
+      "label": "cypress"
+    },
+    "8443": {
+      "label": "helm",
+      "onAutoForward": "silent",
+      "protocol": "https"
+    }
+  },
+  "remoteUser": "vscode",
+  "remoteEnv": {
+    "LOCAL_WORKSPACE_FOLDER": "${localWorkspaceFolder}"
+  },
+  "overrideCommand": false,
+  // https://code.visualstudio.com/docs/remote/devcontainerjson-reference#_lifecycle-scripts
+  //
+  // prep the host before running docker-compose
+  // also seems to be run on disconnect / reconnect?
+  "initializeCommand": "./.devcontainer/initializeCommand.sh",
+  // Codespaces become interactive around the time the above command has completed
+  //
+  // install required utilities on the container
+  "onCreateCommand": "./.devcontainer/onCreateCommand.sh",
+  // update a created codespace container with new repo contents
+  // runs python setup and yarn install
+  "updateContentCommand": "./.devcontainer/updateContentCommand.sh",
+  // VS Code Devcontainers become interactive once the above command has completed
+  //
+  // This command is run once a Codespace has been assigned to a user
+  "postCreateCommand": "./.devcontainer/postCreateCommand.sh",
+  "waitFor": "postCreateCommand",
+  // Run once the frontend has connected to a started container
+  "postAttachCommand": "./.devcontainer/postAttachCommand.sh",
+  "customizations": {
+    "codespaces": {
+      "repositories": {
+        "cased/cased-cli": {
+          "permissions": {
+            "contents": "read"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    {{- include "shell.VaultUnsealer.labels" . | nindent 4 }}
+  name: {{ include "shell.fullname" . }}-vault-unsealer
+spec:
+  selector:
+    matchLabels:
+      {{- include "shell.VaultUnsealer.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "shell.VaultUnsealer.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      enableServiceLinks: false
+      containers:
+        - name: status
+          image: vault:1.12.0@sha256:c8a40d3d0255cca3a64819417a4e6deb11ee2ffff08494d7fddf644a19e703c3
+          command:
+            - /bin/sh
+          args:
+            - -ce
+            - |
+              trap "exit 0" TERM
+
+              while true; do
+                date
+                if vault status | grep Sealed | grep -q true; then
+                  echo "Unsealing vault..."
+                  if [ -z "$VAULT_UNSEAL_TOKEN" ]; then
+                    echo "VAULT_UNSEAL_TOKEN not set."
+                    exit 1
+                  fi
+                  vault operator unseal $VAULT_UNSEAL_TOKEN
+                  vault status
+                  vault secrets enable -version=2 -path=secret/ kv || true
+                fi
+
+                vault status || true
+                sleep 15
+              done
+          envFrom:
+            - secretRef:
+                name: {{ include "shell.fullname" . }}-vault
+          resources:
+            limits:
+              cpu: "1"
+              memory: 2Gi
+            requests:
+              cpu: 1m
+              memory: 50Mi

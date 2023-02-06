@@ -1,0 +1,6 @@
+// Allow for vertical full bleed background
+html,
+body,
+#root {
+  @apply h-full;
+}

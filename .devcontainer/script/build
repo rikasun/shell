@@ -1,0 +1,4 @@
+#!/bin/bash
+
+docker buildx install
+docker build -t test -f .devcontainer/Dockerfile --progress=plain . 

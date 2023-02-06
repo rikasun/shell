@@ -1,0 +1,15 @@
+#!/bin/bash
+set -ex
+
+export PORT=80
+bash tests/integration/test-health-checks.sh
+bash tests/integration/test-http-https-redirect.sh
+
+# Validate that zerossl is configued as fallback
+cat /code/caddy.json
+jq '.apps.tls' /code/caddy.json | grep zerossl
+jq '.apps.tls' /code/caddy.json | grep acme
+
+# TODO actually try to obtain a certificate
+
+bash tests/integration/test-self-signed-tls.sh

@@ -1,0 +1,3 @@
+#!/bin/bash
+
+exec cased-cli auth ${CODESPACE_NAME}-8889.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}

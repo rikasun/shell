@@ -1,0 +1,17 @@
+#!/bin/bash
+set -ex
+
+bash tests/integration/test-health-checks.sh
+bash tests/integration/test-http-https-redirect.sh
+
+# Obtain a localhost certificate
+curl --fail -vk --max-time 5 https://localhost:8443/ > /tmp/tls.out 2> /tmp/tls.err
+
+# Ensure certificate is generated
+grep "certificate obtained successfully" /tmp/log  | grep localhost
+
+grep "CN=Caddy Local" /tmp/tls.err
+grep " 200 " /tmp/tls.err
+! grep -i "server: CasedShell" /tmp/tls.err
+
+bash tests/integration/test-self-signed-tls.sh

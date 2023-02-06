@@ -1,0 +1,91 @@
+{
+    {$CADDY_DEBUG}
+    admin off
+    {$CADDY_EMAIL}
+    {$CADDY_DEFAULT_SNI}
+    {$CADDY_ACME_CA}
+    {$CADDY_ACME_CA_ROOT}
+    {$CADDY_PROXY_PROTOCOL}
+    http_port {$CADDY_HTTP_PORT}
+}
+
+# Handles requests directly to the configured hostname (if not localhost)
+{$CADDY_HOSTNAME_WITHOUT_PORT}:{$CADDY_TLS_PORT} {
+    tls {$CADDY_TLS} {
+        on_demand
+        {$CADDY_TLS_DIRECTIVE}
+    }
+
+    handle /_health {
+	    respond "ok {$GIT_SHA}" 200
+    }
+
+    handle /v2* {
+        reverse_proxy localhost:8888 {
+          trusted_proxies private_ranges
+        }
+    }
+
+    handle * {
+      file_server {
+        root /usr/share/caddy
+      }
+    }
+
+    handle_errors {
+	    respond "{http.error.status_code} {http.error.status_text}"
+    }
+
+    log {
+        output stdout
+        level {$CADDY_LOG_LEVEL}
+    }
+}
+
+# Handles requests to all other hostnames
+:{$CADDY_TLS_PORT} {
+    tls internal {
+        on_demand
+    }
+
+    handle /_health {
+	    respond "ok {$GIT_SHA}" 200
+    }
+
+    handle /v2* {
+        reverse_proxy localhost:8888 {
+          trusted_proxies private_ranges
+        }
+    }
+
+    handle * {
+      file_server {
+        root /usr/share/caddy
+      }
+    }
+
+    handle_errors {
+	    respond "{http.error.status_code} {http.error.status_text}"
+    }
+
+    log {
+        output stdout
+        level {$CADDY_LOG_LEVEL}
+    }
+}
+
+:{$CADDY_HTTP_PORT} {
+    handle /_health {
+	    respond "ok {$GIT_SHA}" 200
+    }
+
+    log {
+        output stdout
+        level {$CADDY_LOG_LEVEL}
+    }
+
+    log {
+        output stdout
+        level {$CADDY_LOG_LEVEL}
+    }
+}

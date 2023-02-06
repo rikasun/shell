@@ -1,0 +1,5 @@
+#!/bin/bash
+source .env
+
+docker compose -p ${NAME_WITHOUT_OWNER:-shell}_devcontainer -f .devcontainer/docker-compose.yml down --volumes --remove-orphans
+docker compose -f .devcontainer/docker-compose.yml -f .devcontainer/docker-compose.test.yml down --volumes --remove-orphans

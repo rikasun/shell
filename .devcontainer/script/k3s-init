@@ -1,0 +1,32 @@
+#!/bin/bash
+set -e
+
+if [ -f tmp/kubeconfig.yaml ]; then
+  # Fixup kubeconfig
+  cat tmp/kubeconfig.yaml | sed 's/127.0.0.1/kubernetes/g' > tmp/kubeconfig$$.yaml
+  mv tmp/kubeconfig$$.yaml tmp/kubeconfig.yaml
+  chmod 600 tmp/kubeconfig.yaml
+
+  if kubectl get nodes | grep -q NotReady; then
+    echo "Cleaning up Kubernetes cluster after Codespace resume..."
+    kubectl get nodes | grep NotReady | awk '{print $1}' | xargs -r kubectl delete node || true
+  fi
+  kubectl apply -f .devcontainer/k8s/local-path-storage.yml > /dev/null || true
+  until helm upgrade \
+    --install \
+    ingress-nginx \
+    ingress-nginx \
+    --repo https://kubernetes.github.io/ingress-nginx \
+    --namespace ingress-nginx \
+    --create-namespace \
+    --set=controller.ingressClassResource.default=true \
+    --set=controller.watchIngressWithoutClass=true \
+    --set controller.config.use-forwarded-headers=true \
+    --set controller.config.enable-access-log-for-default-backend=true \
+    --set controller.config.ssl-protocols='TLSv1 TLSv1.1 TLSv1.2 TLSv1.3' \
+    --set controller.config.ssl-early-data=false \
+    > /dev/null; do
+    echo "retrying..."
+    sleep 10
+  done
+fi

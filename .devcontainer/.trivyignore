@@ -1,0 +1,5 @@
+# https://github.com/aquasecurity/trivy/blob/main/pkg/result/testdata/.trivyignore
+
+# TODO upgrade to latest caddy when available
+# https://avd.aquasec.com/nvd/2022/cve-2022-32149
+CVE-2022-32149

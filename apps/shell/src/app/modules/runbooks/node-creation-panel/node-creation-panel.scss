@@ -1,0 +1,6 @@
+// @TODO Share this container logic with the inspector panel via a Storybook component
+.node-creation-panel {
+  // Needed to clear space from the top of the panel or overflow will happen on the screen
+  // Without this buttons and bottom content will be cutoff
+  height: calc(100% - 56px);
+}

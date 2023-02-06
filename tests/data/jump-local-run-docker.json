@@ -1,0 +1,164 @@
+{
+  "prompts": [
+    {
+      "hostname": "sshd2",
+      "name": "demo-bastion",
+      "description": "an ssh container running in docker-compose",
+      "username": "app",
+      "port": "22",
+      "kind": "container",
+      "provider": "static",
+      "featured": true,
+      "labels": {
+        "environment": "development",
+        "script": "local-run-docker",
+        "app": "bastion"
+      },
+      "shellCommand": "exec \"/bin/bash\""
+    },
+    {
+      "hostname": "sshd3",
+      "name": "demo command",
+      "description": "tail logs on another ssh container running in docker-compose, only accessible via demo-bastion",
+      "username": "app",
+      "port": "22",
+      "kind": "container",
+      "provider": "static",
+      "featured": true,
+      "labels": {
+        "environment": "development",
+        "script": "local-run-docker",
+        "app": "worker"
+      },
+      "proxyJumpSelector": {
+        "app": "bastion"
+      },
+      "shellCommand": "tail -f /var/log/dpkg.log"
+    },
+    {
+      "hostname": "sshd3",
+      "name": "failing command",
+      "description": "run a command that fails. configured to retain the terminal",
+      "username": "app",
+      "port": "22",
+      "kind": "container",
+      "provider": "static",
+      "featured": true,
+      "labels": {
+        "environment": "development",
+        "script": "local-run-docker",
+        "app": "worker"
+      },
+      "proxyJumpSelector": {
+        "app": "bastion"
+      },
+      "shellCommand": "sh -xce 'echo working...; sleep 10; echo error...; false'",
+      "closeTerminalOnExit": false
+    },
+    {
+      "hostname": "sshd3",
+      "name": "demo-worker",
+      "description": "an additional worker container running in docker-compose, only accessible via demo-bastion",
+      "username": "app",
+      "port": "22",
+      "kind": "container",
+      "provider": "static",
+      "labels": {
+        "environment": "development",
+        "script": "local-run-docker",
+        "app": "worker"
+      },
+      "proxyJumpSelector": {
+        "app": "bastion"
+      }
+    },
+    {
+      "hostname": "sshd2",
+      "name": "demo-worker",
+      "username": "app",
+      "port": "22",
+      "kind": "container",
+      "provider": "static",
+      "promptForKey": true,
+      "labels": {
+        "environment": "development",
+        "script": "local-run-docker",
+        "app": "worker"
+      }
+    },
+    {
+      "hostname": "oauth",
+      "name": "ssh-oauth-handlers",
+      "username": "test",
+      "featured": true,
+      "port": "2225",
+      "kind": "container",
+      "provider": "static",
+      "labels": {
+        "environment": "development",
+        "script": "local-run-docker"
+      }
+    },
+    {
+      "hostname": "sshd2",
+      "name": "an example host that requires more auth",
+      "username": "app",
+      "port": "22",
+      "kind": "host",
+      "provider": "static",
+      "promptForKey": true,
+      "promptForUsername": true,
+      "labels": {
+        "environment": "production"
+      }
+    },
+    {
+      "ipAddress": "192.0.2.1",
+      "port": "8888",
+      "name": "a host that will fail to connect",
+      "username": "bad",
+      "kind": "host",
+      "provider": "static",
+      "labels": {
+        "environment": "production"
+      }
+    },
+    {
+      "hostname": "sshd3",
+      "name": "demo-downloads",
+      "description": "a prompt w/ a preDownloadCommand that generates any file you try to download",
+      "username": "app",
+      "port": "22",
+      "kind": "container",
+      "provider": "static",
+      "featured": true,
+      "labels": {
+        "environment": "development",
+        "script": "local-run-docker",
+        "app": "worker"
+      },
+      "proxyJumpSelector": {
+        "app": "bastion"
+      },
+      "preDownloadCommand": "echo foo > /tmp/{filename}; echo /tmp/{filename}"
+    },
+    {
+      "hostname": "sshd3",
+      "name": "failing-download",
+      "description": "a prompt w/ a preDownloadCommand that fails",
+      "username": "app",
+      "port": "22",
+      "kind": "container",
+      "provider": "static",
+      "labels": {
+        "environment": "development",
+        "script": "local-run-docker",
+        "app": "worker"
+      },
+      "proxyJumpSelector": {
+        "app": "bastion"
+      },
+      "preDownloadCommand": "sh -c 'echo foo 1>&2; false'"
+    }
+  ]
+}

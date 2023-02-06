@@ -1,0 +1,84 @@
+name: Frontend Code Quality Check - Required
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+    # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#onpushpull_requestpull_request_targetpathspaths-ignore
+    paths:
+      - '.*.json'
+      - '.devcontainer/**'
+      - '**.env*'
+      - '.github/workflows/frontend*'
+      - '.nvmrc'
+      - '.storybook/**'
+      - '*.js*'
+      - '*.lock'
+      - '*.ts'
+      - 'apps/**'
+      - 'libs/**'
+      - 'tools/**'
+
+jobs:
+  Test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup
+        uses: actions/setup-node@v3
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'yarn'
+
+      - name: Install
+        run: yarn install --frozen-lockfile --network-timeout 1000000
+
+      - name: Code Quality Checks
+        run: |
+          yarn run lint:js
+          yarn run lint:css
+          yarn run build:all
+          yarn run test:all
+
+  packages:
+    name: Test package manifest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup
+        uses: actions/setup-node@v3
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'yarn'
+
+      - name: Install without lockfile
+        run: yarn install --network-timeout 1000000
+
+      - name: Check for yarn.lock diff
+        run: |
+          if ! git diff --exit-code yarn.lock; then
+            echo "Please run 'yarn install' locally and commit the results."
+            exit 1
+          fi
+
+  # @TODO The official GitHub Action for Cypress is broken with Husky, move to it long term
+  # @TODO Artifacts don't want to write due to weird file permissions, fix long term
+  E2E:
+    runs-on: ubuntu-latest
+    container: cypress/browsers:node16.16.0-chrome105-ff104-edge
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'yarn'
+
+      - name: Install
+        run: yarn install --frozen-lockfile --network-timeout 1000000
+
+      - name: Cypress Run
+        run: yarn run e2e:cloud

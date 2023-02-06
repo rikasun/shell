@@ -1,0 +1,142 @@
+{
+  "prompts": [
+    {
+      "hostname": "sshd2",
+      "name": "demo-bastion",
+      "description": "an ssh container running in docker-compose",
+      "username": "app",
+      "port": "22",
+      "kind": "container",
+      "provider": "static",
+      "featured": true,
+      "labels": {
+        "environment": "development",
+        "script": "local-run",
+        "app": "bastion"
+      },
+      "shellCommand": "exec \"/bin/bash\""
+    },
+    {
+      "hostname": "sshd3",
+      "name": "demo-worker",
+      "description": "another ssh container running in docker-compose, only accessible via demo-bastion",
+      "username": "app",
+      "port": "22",
+      "kind": "container",
+      "provider": "static",
+      "featured": true,
+      "labels": {
+        "environment": "development",
+        "script": "local-run",
+        "app": "worker"
+      },
+      "proxyJumpSelector": {
+        "app": "bastion"
+      }
+    },
+    {
+      "hostname": "sshd2",
+      "name": "demo-worker",
+      "description": "an additional worker container running in docker-compose, only accessible via demo-bastion",
+      "username": "app",
+      "port": "22",
+      "kind": "container",
+      "provider": "static",
+      "labels": {
+        "environment": "development",
+        "script": "local-run",
+        "app": "worker"
+      },
+      "proxyJumpSelector": {
+        "app": "bastion"
+      }
+    },
+    {
+      "hostname": "sshd3",
+      "name": "sshd3",
+      "description": "direct connection to the worker demo node",
+      "username": "app",
+      "port": "22",
+      "kind": "container",
+      "provider": "static",
+      "labels": {
+        "environment": "development",
+        "script": "local-run",
+        "app": "worker"
+      }
+    },
+    {
+      "hostname": "sshd2",
+      "name": "demo ssh container with a custom key",
+      "username": "app",
+      "port": "2222",
+      "kind": "container",
+      "provider": "static",
+      "promptForKey": true,
+      "labels": {
+        "environment": "development",
+        "script": "local-run"
+      }
+    },
+    {
+      "hostname": "example.com",
+      "name": "an example host that requires more auth",
+      "kind": "host",
+      "provider": "static",
+      "promptForKey": true,
+      "promptForUsername": true,
+      "labels": {
+        "environment": "production"
+      }
+    },
+    {
+      "ipAddress": "192.0.2.1",
+      "port": "8888",
+      "name": "a host that will fail to connect",
+      "username": "bad",
+      "kind": "host",
+      "provider": "static",
+      "labels": {
+        "environment": "production"
+      }
+    },
+    {
+      "hostname": "sshd3",
+      "name": "demo-downloads",
+      "description": "a prompt w/ a preDownloadCommand that generates any file you try to download",
+      "username": "app",
+      "port": "22",
+      "kind": "container",
+      "provider": "static",
+      "featured": true,
+      "labels": {
+        "environment": "development",
+        "script": "local-run",
+        "app": "worker"
+      },
+      "proxyJumpSelector": {
+        "app": "bastion"
+      },
+      "preDownloadCommand": "echo foo > /tmp/{filename}; echo /tmp/{filename}"
+    },
+    {
+      "hostname": "sshd3",
+      "name": "failing-download",
+      "description": "a prompt w/ a preDownloadCommand that fails",
+      "username": "app",
+      "port": "22",
+      "kind": "container",
+      "provider": "static",
+      "featured": true,
+      "labels": {
+        "environment": "development",
+        "script": "local-run",
+        "app": "worker"
+      },
+      "proxyJumpSelector": {
+        "app": "bastion"
+      },
+      "preDownloadCommand": "sh -c 'echo foo 1>&2; false'"
+    }
+  ]
+}

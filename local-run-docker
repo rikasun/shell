@@ -1,0 +1,29 @@
+#!/bin/bash
+set -e
+export $(for f in $(ls .env.development*); do echo; cat $f; done | grep = | sed 's/#.*//g' | xargs)
+
+docker build --pull -f Dockerfile -t cased-shell-local .
+if [ "$(docker image inspect cased-shell-local | grep sha256: | wc -l)" -gt 10 ]; then
+    echo "too many layers in resulting Docker image" 1>&2
+    exit 1
+fi
+
+if [ -z "$CASED_SHELL_TEST_BLANK_SLATE" ]; then
+    : ${CASED_SHELL_HOST_FILE:=$(pwd)/tests/data/jump-local-run-docker.json}
+    export CASED_SHELL_HOST_FILE
+fi
+
+wait
+exec docker run --name cased-shell-local --rm -it -p 80:80 -p 8888:8888 -p 443:443 \
+    -v $(pwd):$(pwd) \
+    -e CASED_SHELL_SSH_PASSPHRASE \
+    -e CASED_SHELL_SSH_PRIVATE_KEY \
+    -e CASED_SHELL_SSH_USERNAME \
+    -e CASED_SHELL_HOST_FILE \
+    -e CASED_SHELL_TLS \
+    -e CASED_LOCAL_HOSTNAME=host.docker.internal \
+    -e CASED_SHELL_LOG_LEVEL=debug \
+    -e CASED_SHELL_OAUTH_UPSTREAM=host.docker.internal:2225 \
+    -e GIT_SHA=$(date +%s) \
+    --env-file .env.development \
+    cased-shell-local

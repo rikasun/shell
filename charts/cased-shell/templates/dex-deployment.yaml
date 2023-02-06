@@ -1,0 +1,65 @@
+{{- if and (.Values.dex) (.Values.dex.enabled) (eq .Values.config.secret `v2`) -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    {{- include "dex.labels" . | nindent 4 }}
+  name: {{ include "shell.fullname" . }}-dex
+spec:
+  selector:
+    matchLabels:
+      {{- include "dex.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/dex.yaml: {{ include (print $.Template.BasePath "/configmap-dex.yaml") . | sha256sum }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "dex.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: dex
+          image: {{ .Values.dex.image }}
+          imagePullPolicy: Always
+          command:
+            - /usr/local/bin/docker-entrypoint
+            - dex
+            - serve
+            - /etc/dex/cfg/dex.yaml
+          env:
+          - name: DEX_WEB_HTTPS
+            value: '0.0.0.0:5554'
+          - name: CASED_SHELL_HOSTNAME
+            value: '{{ .Values.ingress.fqdn }}'
+          - name: DEX_WEB_TLS_CERT
+            value: '/srv/tls/tls.crt'
+          - name: DEX_WEB_TLS_KEY
+            value: '/srv/tls/tls.key'
+          envFrom:
+            - secretRef:
+                name: {{ include "shell.fullname" . }}-sso
+                optional: true
+          ports:
+          - containerPort: 5554
+            name: dex-https
+          resources:
+            {{- toYaml .Values.dex.resources | nindent 12 }}
+          volumeMounts:
+          - name: config
+            mountPath: /etc/dex/cfg
+          - name: tls
+            mountPath: /srv/tls
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "shell.fullname" . }}-dex
+      - name: tls
+        secret:
+          secretName: {{ include "shell.fullname" . }}-dex-tls
+{{ end }}

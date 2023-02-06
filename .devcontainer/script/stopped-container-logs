@@ -1,0 +1,6 @@
+#!/bin/bash
+
+for container in $(docker ps -a | grep -i Exited | grep -v CONTAINER | awk '{print $1}'); do
+  docker inspect --format "{{lower .Name}}" $container
+  docker logs $container
+done

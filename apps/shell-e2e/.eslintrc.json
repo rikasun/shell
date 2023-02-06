@@ -1,0 +1,32 @@
+{
+  "extends": [
+    "plugin:cypress/recommended",
+    "../../.eslintrc.json",
+    "airbnb-base",
+    "airbnb-typescript/base"
+  ],
+  "ignorePatterns": ["!**/*"],
+  "parserOptions": {
+    "project": ["apps/shell-e2e/tsconfig.json"]
+  },
+  "overrides": [
+    {
+      "files": ["*.ts", "*.tsx", "*.js", "*.jsx"],
+      "rules": {
+        "import/prefer-default-export": 0,
+        "import/no-extraneous-dependencies": 0,
+        "max-lines": [
+          "error",
+          { "max": 300, "skipComments": true, "skipBlankLines": true }
+        ]
+      }
+    },
+    {
+      "files": ["src/plugins/index.js"],
+      "rules": {
+        "@typescript-eslint/no-var-requires": "off",
+        "no-undef": "off"
+      }
+    }
+  ]
+}

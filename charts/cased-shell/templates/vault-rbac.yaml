@@ -1,0 +1,40 @@
+{{- if .Values.rbac.create -}}
+{{- if .Values.vault.enabled -}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "shell.fullname" . }}-vault-unsealer
+  labels:
+    {{- include "shell.vaultInit.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "shell.fullname" . }}-vault-unsealer
+  labels:
+    {{- include "shell.vaultInit.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "shell.fullname" . }}-vault-unsealer
+subjects:
+- kind: ServiceAccount
+  name: {{ include "shell.fullname" . }}-vault-unsealer
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "shell.fullname" . }}-vault-unsealer
+  labels:
+    {{- include "shell.vaultInit.labels" . | nindent 4 }}
+rules:
+  - apiGroups:      ['']
+    resources:      ['secrets']
+    verbs:          ['create']
+  - apiGroups:      ['']
+    resources:      ['secrets']
+    verbs:          ['delete']
+    resourceNames:  ['{{ include "shell.fullname" . }}-vault']
+---
+{{ end }}
+{{ end }}

@@ -1,0 +1,128 @@
+#!/bin/bash
+set -e
+if [ "${CASED_SHELL_LOG_LEVEL}" == "debug" ]; then
+    set -x
+    CADDY_DEBUG="debug"
+fi
+: ${CASED_SHELL_LOG_LEVEL:="error"}
+
+if [ "${CASED_SHELL_TLS}" != "off" ]; then
+    : ${CADDY_TLS_PORT:="8443"}
+    CADDY_HOSTNAME_WITHOUT_PORT=$(echo "${CASED_SHELL_HOSTNAME}" | cut -f 1 -d :)
+    if [ "${CADDY_HOSTNAME_WITHOUT_PORT}" == "localhost" ]; then
+        CASED_SHELL_TLS="internal"
+    fi
+
+    : ${CASED_SHELL_TLS:="acme"}
+    : ${CADDY_HTTP_PORT:="8088"}
+    if [ "${CASED_SHELL_TLS}" == "acme" ]; then
+        CADDY_HTTP_PORT="80"
+        CADDY_TLS=""
+        if [ -n "$CASED_SHELL_ACME_ENDPOINT" ]; then
+            CADDY_ACME_CA="acme_ca $CASED_SHELL_ACME_ENDPOINT"
+            if [ -n "$CASED_SHELL_ACME_ENDPOINT_CA_ROOT" ]; then
+                CADDY_ACME_CA_ROOT="acme_ca_root $CASED_SHELL_ACME_ENDPOINT_CA_ROOT"
+            fi
+        else
+            CADDY_DEFAULT_SNI="default_sni $CADDY_HOSTNAME_WITHOUT_PORT"
+            CADDY_EMAIL="email ted@cased.com"
+        fi
+    else
+        CADDY_HTTP_PORT="8088"
+        CADDY_HEALTH_LISTENER="localhost:8088"
+        # Configure a non-functional issuer for a non-functional hostname so
+        # that the default site serves all requests
+        CADDY_DEFAULT_SNI="default_sni localhost"
+        CADDY_HOSTNAME_WITHOUT_PORT="caddy.example.com"
+        CADDY_TLS_DIRECTIVE="issuer acme {
+            timeout 1s
+            dir https://localhost:14000/directory
+            email ted@cased.com
+        }"
+    fi
+
+    : ${CADDY_LOG_LEVEL:=$(echo "$CASED_SHELL_LOG_LEVEL" | tr '[a-z]' '[A-Z]')}
+
+    if [ "${CASED_SHELL_PROXY_PROTOCOL}" == "on" ]; then
+        CADDY_PROXY_PROTOCOL="servers {
+            listener_wrappers {
+                proxy_protocol
+                tls
+            }
+        }"
+    fi
+
+    export \
+        CADDY_ACME_CA \
+        CADDY_ACME_CA_ROOT \
+        CADDY_DEBUG \
+        CADDY_DEFAULT_SNI \
+        CADDY_EMAIL \
+        CADDY_HOSTNAME_WITHOUT_PORT \
+        CADDY_ISSUER \
+        CADDY_LOG_LEVEL \
+        CADDY_TLS \
+        CADDY_TLS_DIRECTIVE \
+        CADDY_PROXY_PROTOCOL \
+        CADDY_TLS_PORT \
+        CADDY_HTTP_PORT \
+        ;
+
+    if ! caddy adapt --validate > caddy.json; then
+        echo "Caddy configuration invalid!" 1>&2
+        env | grep CADDY_
+        cat Caddyfile caddy.json 1>&2
+        exit 1
+    fi
+    CURL_ARGS=-s
+    if [ "${CASED_SHELL_LOG_LEVEL}" == "debug" ]; then
+        CURL_ARGS=-v
+        cat caddy.json
+    fi
+    if [ "${CASED_SHELL_PROXY_PROTOCOL}" == "on" ]; then
+        CURL_ARGS="$CURL_ARGS --haproxy-protocol"
+    fi
+    caddy start
+    : ${CADDY_HEALTH_LISTENER:="localhost"}
+    while true; do
+        curl --fail $CURL_ARGS --max-time 1 "http://${CADDY_HEALTH_LISTENER}/_health" > /dev/null && break
+        if [ "$SECONDS" -gt "30" ]; then
+            echo "Caddy failed to start after ${SECONDS}s" 2>&1
+            exit 1
+        fi
+        sleep 1
+    done
+    echo "Caddy started"
+fi
+
+if [ "${CASED_SHELL_MIGRATE}" == "true" ]; then
+  SECONDS=0
+  # Read in PGSSLMODE, interpret for node-pg-migrate
+  # https://www.postgresql.org/docs/current/libpq-ssl.html#LIBPQ-SSL-SSLMODE-STATEMENTS
+  if [ -z "${PGSSLMODE##*verify*}" ]; then
+    REJECT=1
+  else
+    REJECT=0
+  fi
+  until NODE_TLS_REJECT_UNAUTHORIZED=$REJECT yarn run migrate up; do
+    if [ "$SECONDS" -gt "${PGMIGRATE_TIMEOUT:-60}" ]; then
+      echo "Failed to migrate after ${SECONDS}s" 2>&1
+      exit 1
+    fi
+    sleep 3
+    echo retrying...
+  done
+fi
+if [ "${NO_DATABASE}" == "true" ]; then
+    unset DATABASE_URL
+else
+    python3 ./seed.py
+fi
+
+if [ -z "${CASED_SERVER_ADDR}" ]; then
+  if [ -n "${SSH_NODE_IP}" ] && [ -n "${SSH_NODE_PORT}" ]; then
+      export CASED_SERVER_ADDR="${SSH_NODE_IP}:${SSH_NODE_PORT}"
+  fi
+fi
+
+exec python -u run.py --logging=$CASED_SHELL_LOG_LEVEL

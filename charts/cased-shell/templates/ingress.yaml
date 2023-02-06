@@ -1,0 +1,55 @@
+{{- if .Values.ingress.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "shell.fullname" . }}
+  labels:
+    {{- include "shell.labels" . | nindent 4 }}
+  annotations:
+  {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- if eq .Values.service.protocol "https" }}
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+  {{- end }}
+spec:
+  {{- with .Values.ingress.ingressClassName }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  rules:
+  - host: {{ .Values.ingress.fqdnOverride | default .Values.ingress.fqdn }}
+    http:
+      paths:
+        - backend:
+            service:
+              name: {{ include "shell.fullname" . }}-{{ .Values.service.protocol }}
+              port:
+                number: {{ .Values.service.port }}
+          path: /
+          pathType: Prefix
+      {{- if and (.Values.server) (.Values.server.enabled) }}
+        - backend:
+            service:
+              name: {{ include "shell.fullname" . }}-cased-server
+              port:
+                number: 6566
+          path: /cased-server/
+          pathType: Prefix
+      {{- end }}
+      {{- if and (.Values.dex) (.Values.dex.enabled) (eq .Values.config.secret `v2`) }}
+        - backend:
+            service:
+              name: {{ include "shell.fullname" . }}-dex
+              port:
+                number: 5554
+          path: /idp/
+          pathType: Prefix
+      {{- end }}
+
+  tls:
+  - hosts:
+    - {{ .Values.ingress.fqdn }}
+    {{- with .Values.ingress.secretName }}
+    secretName: {{ . }}
+    {{- end }}
+{{- end }}

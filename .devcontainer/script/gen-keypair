@@ -1,0 +1,15 @@
+#!/bin/bash
+
+name=${1:-localhost}
+mkdir -p ./tmp/${name}/tls
+openssl req \
+  -x509 \
+  -nodes \
+  -sha256 \
+  -newkey rsa:4096 \
+  -days 365 \
+  -subj "/C=US/ST=California/L=SAN FRANCISCO/O=Cased Inc/OU=Engineering/CN=${name}" \
+  -keyout ./tmp/${name}/tls/key.pem \
+  -out ./tmp/${name}/tls/cert.pem
+
+chmod a+r ./tmp/${name}/tls/*.pem

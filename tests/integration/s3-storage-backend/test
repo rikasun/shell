@@ -1,0 +1,4 @@
+#!/bin/bash
+set -ex -o pipefail
+
+pytest tests/models/test_certificate_authority.py tests/models/test_session_replay.py tests/test_cloudyblobject.py tests/test_shell_session.py

@@ -1,0 +1,10 @@
+.template-two-column {
+  background: #fafafa;
+
+  &__content {
+    margin-left: 16rem;
+
+    // Strip out header sizing to allow for full bleed background from top to bottom
+    min-height: calc(100% - 61px);
+  }
+}

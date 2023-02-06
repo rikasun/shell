@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "shell.fullname" . }}-{{ .Values.service.protocol }}
+  labels:
+    {{- include "shell.labels" . | nindent 4 }}
+  annotations:
+  {{- with .Values.service.annotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- if eq .Values.service.protocol "https" }}
+    projectcontour.io/upstream-protocol.tls: {{ .Values.service.port | quote}}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.port }}
+      protocol: TCP
+      name: {{ .Values.service.protocol }}
+  selector:
+    {{- include "shell.selectorLabels" . | nindent 4 }}

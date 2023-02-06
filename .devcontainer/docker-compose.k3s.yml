@@ -1,0 +1,50 @@
+version: '3'
+services:
+  app:
+    environment:
+      - KUBECONFIG=/workspaces/shell/tmp/kubeconfig.yaml
+
+  # the name of this service is important as it is included in the certificate
+  kubernetes:
+    image: "rancher/k3s:${K3S_VERSION:-latest}"
+    command: server --no-deploy traefik
+    tmpfs:
+      - /run
+      - /var/run
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 65535
+        hard: 65535
+    privileged: true
+    restart: always
+    environment:
+      - K3S_TOKEN=${K3S_TOKEN:-k3s}
+      - K3S_KUBECONFIG_OUTPUT=/workspaces/shell/tmp/kubeconfig.yaml
+      - K3S_KUBECONFIG_MODE=666
+    volumes:
+      - k3s-server:/var/lib/rancher/k3s
+      # This is just so that we get the kubeconfig file out
+      - ..:/workspaces/shell:cached
+
+  agent:
+    image: "rancher/k3s:${K3S_VERSION:-latest}"
+    tmpfs:
+      - /run
+      - /var/run
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 65535
+        hard: 65535
+    privileged: true
+    restart: always
+    volumes:
+      - local-path-provisioner:/var/lib/rancher/k3s/local-path-provisioner
+    environment:
+      - K3S_URL=https://kubernetes:6443
+      - K3S_TOKEN=${K3S_TOKEN:-k3s}
+
+volumes:
+  k3s-server: {}
+  local-path-provisioner: {}

@@ -1,0 +1,54 @@
+{
+  "extends": [
+    "../../.eslintrc.json",
+    "../../.eslintrc.core.js",
+    "plugin:storybook/recommended"
+  ],
+  "ignorePatterns": ["!**/*"],
+  "overrides": [
+    {
+      "files": ["*.ts", "*.tsx", "*.js", "*.jsx"],
+      "extends": ["airbnb-typescript", "prettier"],
+      "parserOptions": {
+        "project": [
+          "libs/ui/tsconfig.*?.json",
+          "libs/ui/.storybook/tsconfig.json"
+        ]
+      },
+      "rules": {
+        "react/function-component-definition": 0,
+        "storybook/no-uninstalled-addons": 0,
+        "jsx-a11y/label-has-associated-control": [
+          2,
+          {
+            "labelComponents": ["Label"],
+            "labelAttributes": ["label"],
+            "controlComponents": ["Input"],
+            "depth": 3,
+            "assert": "either"
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "*.stories.ts",
+        "*.stories.tsx",
+        "*.stories.js",
+        "*.stories.jsx"
+      ],
+      "rules": {
+        "import/no-extraneous-dependencies": 0,
+        "react/jsx-props-no-spreading": 0
+      }
+    },
+    {
+      "files": ["*.ts", "*.tsx"],
+      "rules": {}
+    },
+    {
+      "files": ["*.js", "*.jsx"],
+      "rules": {}
+    }
+  ]
+}

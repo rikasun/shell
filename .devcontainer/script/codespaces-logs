@@ -1,0 +1,3 @@
+#!/bin/bash
+
+cat /workspaces/.codespaces/.persistedshare/EnvironmentLog.txt

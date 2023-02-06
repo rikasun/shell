@@ -1,0 +1,55 @@
+{{- if .Values.server.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    {{- include "shell.server.labels" . | nindent 4 }}
+  name: {{ include "shell.fullname" . }}-cased-server
+spec:
+  selector:
+    matchLabels:
+      {{- include "shell.server.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/configmap.yaml: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "shell.server.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: server
+          env:
+          - name: URL_PREFIX
+            value: /cased-server/
+          - name: CASED_SHELL_HOSTNAME
+            value: '{{ .Values.ingress.fqdn }}'
+          - name: CASED_SSH_PORT
+            value: '2222'
+          - name: TLS_CERT_FILE
+            value: '/srv/tls/tls.crt'
+          - name: TLS_KEY_FILE
+            value: '/srv/tls/tls.key'
+          image: {{ .Values.server.image }}
+          imagePullPolicy: Always
+          ports:
+          - containerPort: 6566
+            name: api
+          - containerPort: 2222
+            name: ssh
+          resources:
+            {{- toYaml .Values.server.resources | nindent 12 }}
+          volumeMounts:
+          - mountPath: /srv/tls
+            name: tls
+      volumes:
+      - name: tls
+        secret:
+          secretName: {{ include "shell.fullname" . }}-cased-server-tls
+{{ end }}

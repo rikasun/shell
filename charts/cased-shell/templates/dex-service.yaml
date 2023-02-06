@@ -1,0 +1,17 @@
+{{- if and (.Values.dex) (.Values.dex.enabled) (eq .Values.config.secret `v2`) -}}
+apiVersion: v1
+kind: Service
+metadata:
+  annotations: {}
+  labels:
+    {{- include "dex.labels" . | nindent 4 }}
+  name: {{ include "shell.fullname" . }}-dex
+spec:
+  ports:
+  - name: dex-https
+    port: 5554
+    targetPort: dex-https
+  selector:
+    {{- include "dex.selectorLabels" . | nindent 4 }}
+  type: ClusterIP
+{{ end }}

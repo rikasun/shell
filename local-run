@@ -1,0 +1,128 @@
+#!/bin/bash
+
+black .
+
+set -o allexport
+for f in $(ls .env.development*); do . $f; done
+source .env
+set +o allexport
+
+# If running in a devcontainer, wait until setup is complete before proceeding
+if [ -f log/.initializeCommand.log ]; then
+    if ! [ -f log/.postAttachCommand.log ]; then
+        printf "Waiting for development environment setup to complete (see log/devcontainer.log for more)..."
+        until [ -f log/.postAttachCommand.log ]; do
+            if [ "$SECONDS" -gt "300" ]; then
+                echo "Setup timed out. Sorry about that!"
+                echo ""
+                echo "To help us prevent this in the future, please collect the logs"
+                echo "in log/*.log and open an issue:"
+                echo ""
+                echo "  https://github.com/cased/shell/issues/new?labels=devcontainer"
+                echo ""
+                exit 1
+            fi
+            sleep 1
+            printf "."
+        done
+    fi
+fi
+echo ""
+if [ -f log/.onCreateCommand.log ]; then
+    echo "Codespace created at:"
+    date -r log/.onCreateCommand.log
+fi
+if [ -f log/.postAttachCommand.log ]; then
+    echo "Codespace last started at:"
+    date -r log/.postAttachCommand.log
+fi
+
+# Load environment again
+set -o allexport
+for f in $(ls .env.development*); do . $f; done
+source .env
+set +o allexport
+
+if [ -z "$CASED_SHELL_TEST_BLANK_SLATE" ]; then
+    if [ -n "$REMOTE_CONTAINERS_SOCKETS" ] || [ -n "$CODESPACE_NAME" ]; then
+        : ${CASED_SHELL_HOST_FILE:=$(pwd)/tests/data/jump-local-run-docker.json}
+    else
+        : ${CASED_SHELL_HOST_FILE:=$(pwd)/tests/data/jump-local-run.json}
+    fi
+    export CASED_SHELL_HOST_FILE
+fi
+
+export CASED_SHELL_HOSTNAME=${CASED_SHELL_HOSTNAME:-localhost:8889}
+
+# Setup environment for nx shell app
+echo "NX_CODESPACE_NAME=${CODESPACE_NAME}" >> ./apps/shell/.env.local
+echo "NX_GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN=${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}" >> ./apps/shell/.env.local
+
+yarn run start-frontend &
+nx_pid=$!
+
+# force a reload of all js each time the server is restarted
+export GIT_SHA="$(date +%s)"
+
+if [ -n "$REMOTE_CONTAINERS_SOCKETS" ]; then
+  export CASED_SHELL_OAUTH_UPSTREAM=localhost:2225
+fi
+
+if [ -n "$CODESPACE_NAME" ]; then
+    export ALLOWED_ORIGINS="https://${CASED_SHELL_HOSTNAME},http://localhost:8889,http://devcontainer:8889,http://localhost:4200,https://${CODESPACE_NAME}-4200.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
+fi
+
+./.devcontainer/script/vault-unseal
+
+python3 run.py --debug --logging=${CASED_SHELL_LOG_LEVEL:=info} &
+python_pid=$!
+
+
+if ! [ -f ./tmp/cased-shell/tls/cert.pem ]; then
+  .devcontainer/script/gen-keypair cased-shell
+fi
+
+caddy run --config Caddyfile.dev.json &
+caddy_pid=$!
+
+function waitForProcessAndPort() {
+  if ! nc -z localhost "$2"; then
+    printf "Waiting for localhost:$2 to be ready..."
+    until nc -z localhost "$2"; do
+      if ps "$1" > /dev/null; then
+        printf "."
+        sleep 1
+      else
+        echo "Process expected to serve port $2 is not running"
+        exit 1
+      fi
+    done
+    echo "ready!"
+  fi
+}
+
+# update this every time the local server is restarted
+GOPRIVATE=github.com go install github.com/cased/cased-cli@latest
+
+waitForProcessAndPort $python_pid 8888
+waitForProcessAndPort $nx_pid 4200
+waitForProcessAndPort $caddy_pid 8889
+
+if [ -n "$CODESPACE_NAME" ]; then
+  gh codespace ports visibility 8888:public -c $CODESPACE_NAME
+  gh codespace ports visibility 4200:public -c $CODESPACE_NAME
+  gh codespace ports visibility 8889:public -c $CODESPACE_NAME
+fi
+
+echo "Development environment ready! Login here with 'admin@cased.dev' with the password 'password':"
+echo ""
+echo "  ${CASED_URL_PROTOCOL:-http}://${CASED_SHELL_HOSTNAME}/"
+echo ""
+echo "Having trouble? Checkout the troubleshooting guide: https://github.com/cased/shell/tree/main/.devcontainer#troubleshooting"
+echo ""
+
+
+trap 'echo "shutting down..."; kill $nx_pid $python_pid $caddy_pid 2>/dev/null' EXIT
+
+wait $nx_pid
+wait $python_pid

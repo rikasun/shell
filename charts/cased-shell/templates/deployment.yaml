@@ -1,0 +1,141 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "shell.fullname" . }}-v3
+  labels:
+    {{- include "shell.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "shell.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: 'cased-shell'
+        checksum/secret-s3.yaml: {{ include (print $.Template.BasePath "/secret-s3.yaml") . | sha256sum }}
+        checksum/secret-sso.yaml: {{ include (print $.Template.BasePath "/secret-sso.yaml") . | sha256sum }}
+        checksum/secret-postgres.yaml: {{ include (print $.Template.BasePath "/secret-postgres.yaml") . | sha256sum }}
+        checksum/configmap.yaml: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/configmap-pvc.yaml: {{ include (print $.Template.BasePath "/configmap-pvc.yaml") . | sha256sum }}
+        checksum/jump.yaml: {{ include (print $.Template.BasePath "/jump.yaml") . | sha256sum }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "shell.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "shell.serviceAccountName" . }}
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - env:
+            {{- include "shell.postgresEnv" . | nindent 12 }}
+            - name: CADDY_TLS_PORT
+              value: '8443'
+            {{- if .Values.server.enabled }}
+            {{- with .Values.server.service.nodePort }}
+            - name: SSH_NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: SSH_NODE_PORT
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.server.service.externalHostAndPort }}
+            - name: CASED_SERVER_ADDR
+              value: {{ . | quote }}
+            {{- end }}
+            {{- end }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "shell.fullname" . }}-pvc
+                optional: true
+            - secretRef:
+                name: {{ include "shell.fullname" . }}-s3
+                optional: true
+            - secretRef:
+                name: {{ include "shell.fullname" . }}-jwt
+                optional: true
+            - secretRef:
+                name: {{ include "shell.fullname" . }}-sso
+                optional: true
+            - secretRef:
+                name: {{ include "shell.fullname" . }}-postgres
+            - secretRef:
+                name: {{ default (printf "%s-%s" (include "shell.fullname" .) "vault") .Values.vault.secretName }}
+            - configMapRef:
+                name: {{ include "shell.fullname" . }}
+            - configMapRef:
+                name: {{ include "shell.fullname" . }}-configure-hosts-with-jump
+                optional: true
+            - configMapRef:
+                name: {{ include "shell.fullname" . }}-{{ eq .Values.config.CASED_SHELL_SSH_USERNAME "" | ternary "no-default-username" "default-username" }}
+                optional: true
+          image: {{ .Values.config.image | quote }}
+          imagePullPolicy: Always
+          name: cased-shell
+          ports:
+          - containerPort: 8443
+            protocol: TCP
+          - containerPort: 8888
+            protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /v2/_ping
+              port: 8443
+              scheme: "HTTPS"
+            initialDelaySeconds: 10
+            timeoutSeconds: 5
+          resources:
+            {{- toYaml .Values.config.shellResources | nindent 12 }}
+          volumeMounts:
+            - mountPath: /code/.storage
+              name: storage
+            - mountPath: /config
+              name: config
+              readOnly: true
+        - command:
+          - /bin/app
+          - /jump/jump-defaults.yaml
+          - /jump/jump-custom.yaml
+          - /config/jump.json
+          image: ghcr.io/cased/jump:v0.3.0@sha256:981a2bdd0a6a24902a282a2d36179727b6362d1b2243385b72edd1230754d345
+          imagePullPolicy: Always
+          name: jump
+          resources:
+            {{- toYaml .Values.config.jumpResources | nindent 12 }}
+          volumeMounts:
+          - mountPath: /config
+            name: config
+          - mountPath: /jump
+            name: jump
+      # conflicts with some existing use of CASED_SHELL_ namespace
+      enableServiceLinks: false
+      volumes:
+        - name: storage
+          {{- if and .Values.persistence.enabled (eq .Values.config.objectStorageBackend "local") }}
+          {{- if .Values.persistence.existingClaim }}
+          persistence.existingClaim: {{ .Values.persistence.existingClaim }}
+          {{- else }}
+          persistentVolumeClaim:
+            claimName: {{ include "shell.fullname" . }}-storage
+          {{- end }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - emptyDir: {}
+          name: config
+        - emptyDir: {}
+          name: backup
+        - configMap:
+            name: {{ include "shell.fullname" . }}-jump
+          name: jump

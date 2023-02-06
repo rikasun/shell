@@ -1,0 +1,25 @@
+version: '3.2'
+services:
+  sshserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    expose:
+      - 22
+    volumes:
+      - "sshd_update:/sshd_update/"
+  sut:
+    image: casedhub-shell-test
+    depends_on:
+      - sshserver
+    restart: 'no'
+    env_file: ../../../.env.test
+    environment:
+      SUITE: 'ssh-cert'
+      STORAGE_BACKEND: local
+      NO_DATABASE: 'true'
+    volumes:
+      - "sshd_update:/sshd_update/"
+    command: pytest -v tests/test_sshcert.py
+volumes:
+  sshd_update:

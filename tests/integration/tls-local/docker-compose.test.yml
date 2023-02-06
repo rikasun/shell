@@ -1,0 +1,11 @@
+version: '3.2'
+services:
+  sut:
+    image: casedhub-shell-test
+    restart: 'no'
+    env_file: ../../../.env.test
+    environment:
+      SUITE: 'tls-local'
+      NO_DATABASE: 'true'
+    command: |
+      /bin/bash -c '/code/start > /tmp/log 2>&1 & /code/test'
