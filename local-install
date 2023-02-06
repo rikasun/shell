@@ -1,6 +1,0 @@
-#!/bin/bash
-
-brew install libmagic
-yarn install
-LIBSODIUM_MAKE_ARGS=-j4 sudo python3 setup.py install
-
