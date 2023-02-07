@@ -72,20 +72,21 @@
   "forwardPorts": [4200, 8080, 8888, 8889],
   "portsAttributes": {
     "4200": {
-      "label": "frontend"
+      "label": "frontend",
+      "onAutoForward": "silent"
     },
     "8889": {
       "label": "shell"
     },
     "8888": {
-      "label": "python"
+      "label": "python",
+      "onAutoForward": "silent"
     },
     "8080": {
       "label": "cypress"
     },
     "8443": {
       "label": "helm",
-      "onAutoForward": "silent",
       "protocol": "https"
     }
   },

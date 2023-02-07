@@ -14,7 +14,6 @@ exec > >(tee -ai log/devcontainer.log)
 exec 2>&1
 
 ./.devcontainer/script/vault-unseal
-./.devcontainer/script/k3s-init
 
 # Remove default first run notice
 if [ -f /workspaces/.codespaces/shared/first-run-notice.txt ]; then
