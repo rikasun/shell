@@ -36,6 +36,24 @@
           "listen": [":8889", "localhost:8890"],
           "routes": [
             {
+              "match": [{ "path": ["/api*"] }],
+              "handle": [
+                {
+                  "handler": "subroute",
+                  "routes": [
+                    {
+                      "handle": [
+                        {
+                          "handler": "reverse_proxy",
+                          "upstreams": [{ "dial": "localhost:8888" }]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
               "match": [{ "path": ["/v2*"] }],
               "handle": [
                 {
