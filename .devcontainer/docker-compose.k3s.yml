@@ -6,6 +6,8 @@ services:
 
   # the name of this service is important as it is included in the certificate
   kubernetes:
+    # use a fixed hostname so that pvcs survive rebuilds
+    hostname: k3s-control-plane
     image: rancher/k3s:v1.26.1-k3s1
     command: server --disable traefik
     tmpfs:
@@ -28,6 +30,8 @@ services:
       - ..:/workspaces/shell:cached
 
   agent:
+    # use a fixed hostname so that pvcs survive rebuilds
+    hostname: k3s-agent
     image: rancher/k3s:v1.26.1-k3s1
     tmpfs:
       - /run
