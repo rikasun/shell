@@ -6,7 +6,7 @@ services:
 
   # the name of this service is important as it is included in the certificate
   kubernetes:
-    image: "rancher/k3s:${K3S_VERSION:-latest}"
+    image: rancher/k3s:v1.26.1-k3s1
     command: server --disable traefik
     tmpfs:
       - /run
@@ -28,7 +28,7 @@ services:
       - ..:/workspaces/shell:cached
 
   agent:
-    image: "rancher/k3s:${K3S_VERSION:-latest}"
+    image: rancher/k3s:v1.26.1-k3s1
     tmpfs:
       - /run
       - /var/run
