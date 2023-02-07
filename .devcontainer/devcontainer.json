@@ -85,7 +85,6 @@
     },
     "8443": {
       "label": "helm",
-      "onAutoForward": "silent",
       "protocol": "https"
     }
   },
