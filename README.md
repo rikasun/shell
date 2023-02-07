@@ -5,14 +5,14 @@
 This is the open preview of Cased.
 
 During this preview, we highly recommend you reach out to us at team@cased.com. We're happy
-to help!
+to help! Please also check out our resources and docs.
 
 ![cased-dash](https://user-images.githubusercontent.com/126905/216887655-2a632271-6154-465c-9d64-782b00a05bf3.png)
 
 ### Resources & getting started
 
 - [Cased Docs](https://docs.cased.com)
-- [GitHub Issues](https://github.com/cased/cased/issues)
+- [GitHub Issues](https://github.com/cased/shell/issues)
 - [Slack](https://join.slack.com/t/cased-workspace/shared_invite/zt-1onqqcgo6-rq56zZoDiLEMpj6yPn19sQ)
 
 ## Just trying it out or developing (using GitHub Codespaces)
