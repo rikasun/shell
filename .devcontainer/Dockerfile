@@ -129,14 +129,13 @@ RUN (rm -rf /tmp/yarn-* || true) && su vscode -c "\
     [ \$COUNTER -lt 2 ]"
 
 FROM cased-devcontainer
-ENV PATH=${PATH}:/home/vscode/.local/bin
+ENV PATH=${PATH}:/home/vscode/.local/bin:/home/vscode/go/bin
 COPY --link --from=cased-step /usr/local/bin/step /usr/local/bin/step
 COPY --link --from=cased-chart-testing /usr/local/bin/ct /usr/local/bin/ct
 COPY --link --from=cased-aws /usr/local/bin/aws-iam-authenticator /usr/local/bin/aws-iam-authenticator
 COPY --link --from=cased-golang /usr/local/go /usr/local/go
 COPY --link --from=cased-golang /usr/local/bin/go /usr/local/bin/go
 COPY --link --from=cased-caddy /usr/local/bin/caddy /usr/local/bin/caddy
-
 
 COPY --link --chown=1000:1000 requirements.txt /code/
 RUN su vscode -c "cd /code; LIBSODIUM_MAKE_ARGS=-j4 pip3 --disable-pip-version-check install -r /code/requirements.txt"
