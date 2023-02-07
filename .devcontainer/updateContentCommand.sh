@@ -69,4 +69,3 @@ done
 
 go install github.com/norwoodj/helm-docs/cmd/helm-docs@latest
 GOPRIVATE=github.com go install github.com/cased/cased-cli@latest
-echo "PATH=\$PATH:$(go env GOPATH)/bin" > .env.development.gobin

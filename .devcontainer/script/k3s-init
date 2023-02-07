@@ -7,10 +7,6 @@ if [ -f tmp/kubeconfig.yaml ]; then
   mv tmp/kubeconfig$$.yaml tmp/kubeconfig.yaml
   chmod 600 tmp/kubeconfig.yaml
 
-  if kubectl get nodes | grep -q NotReady; then
-    echo "Cleaning up Kubernetes cluster after Codespace resume..."
-    kubectl get nodes | grep NotReady | awk '{print $1}' | xargs -r kubectl delete node || true
-  fi
   kubectl apply -f .devcontainer/k8s/local-path-storage.yml > /dev/null || true
   until helm upgrade \
     --install \

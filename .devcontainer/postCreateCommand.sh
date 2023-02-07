@@ -21,10 +21,7 @@ if [ -f /workspaces/.codespaces/shared/first-run-notice.txt ]; then
   echo "Setup still in progress. Run the 'Run Build Task' command or press Cmd+Shift+B to follow along." > /workspaces/.codespaces/shared/first-run-notice.txt
 fi
 
-# https://stackoverflow.com/questions/1401002/how-to-trick-an-application-into-thinking-its-stdout-is-a-terminal-not-a-pipe/20401674#20401674
-faketty () {
-    script -qefc "$(printf "%q " "$@")" /dev/null
-}
+./.devcontainer/script/k3s-init
 
 mkdir -p tmp
 touch tmp/authorized_keys
