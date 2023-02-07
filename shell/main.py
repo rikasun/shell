@@ -10,6 +10,7 @@ from shell import controllers
 
 
 from shell.controllers import v2
+
 from shell.controllers.v2 import (
     BaseMixin as V2BaseMixin,
     LogoutController as V2LogoutController,
@@ -122,6 +123,11 @@ def make_handlers(loop, options):
         (
             r"/api/casedshell",
             V2ApiCasedShellController,
+            dict(loop=loop),
+        ),
+        (
+            r"/api/prompt-access",
+            APIPromptAccessController,
             dict(loop=loop),
         ),
         (
