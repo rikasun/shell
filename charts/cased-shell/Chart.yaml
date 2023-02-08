@@ -4,7 +4,7 @@ icon: https://github.com/cased.png
 type: application
 home: https://cased.com
 # See https://helm.sh/docs/topics/charts/#charts-and-versioning
-version: '3.0.0-alpha.1'
+version: '3.0.0-alpha.2'
 appVersion: '3.0.0'
 maintainers:
   # Required by chart-testing to be a GitHub org slug
